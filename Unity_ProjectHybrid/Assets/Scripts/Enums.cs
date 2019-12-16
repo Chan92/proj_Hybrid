@@ -5,10 +5,8 @@ using UnityEngine;
 public enum RoadType {
 	start,
 	twoWayPath,
-	singleRoadStraight,
-	singleRoadCurved,
-	doubleRoadStraight,
-	doubleRoadCurved,
+	roadStraight,
+	roadCurved,
 	ramp,
 	booster,
 	finish

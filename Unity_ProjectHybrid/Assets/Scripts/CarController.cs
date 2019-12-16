@@ -10,13 +10,15 @@ public class CarController:MonoBehaviour {
 
 	[Header("Tweakable stats")]
 	[SerializeField]
-	private float movespeedMud = 5f;
+	private float boosterSpeed;
 	[SerializeField]
-	private float movespeedRoad = 10f;
+	private float movespeedMud = 5f, movespeedRoad = 10f;
 	[SerializeField]
 	private Vector3 offsetDown, offsetForward;
 	[SerializeField]
 	private float rayDownDist = 0.5f, rayForwardDist = 0.2f, boxRayDist = 1.2f;
+	[SerializeField][Min(0.01f)]
+	private float boxRayScale = 1;
 
 	private Rigidbody rb;
 	private RoadPiece roadPoint;
@@ -25,6 +27,7 @@ public class CarController:MonoBehaviour {
 	private int roadStartPoint, currentPoint;
 	private bool roadInfoSet = false;
 	private bool boxRayDetect;
+	private Vector3 boxRaySize;
 
 	void Start(){
 		if(movespeedMud >= movespeedRoad) {
@@ -37,6 +40,10 @@ public class CarController:MonoBehaviour {
 	}
 
 	private void Update() {
+		if(Input.GetKeyDown(KeyCode.Space)) {
+			gameStart = !gameStart;
+		}
+
 		if(gameStart) {
 			if(CheckWall()) {
 				Vector3 _newRot = new Vector3(0, transform.eulerAngles.y + 180f, 0);
@@ -50,26 +57,28 @@ public class CarController:MonoBehaviour {
 				OnRoadMovement();
 			}
 		} else {
-			if(Input.GetKeyDown(KeyCode.Space)) {
-				gameStart = true;
-			}
+		//	if(Input.GetKeyDown(KeyCode.Space)) {
+		//		gameStart = true;
+		//	}
 		}
 	}
 
 	bool OnRoadCheck() {
-		Debug.DrawRay(transform.position + offsetDown, Vector3.down * rayDownDist, Color.blue);
-		Physics.Raycast(transform.position + offsetDown, Vector3.down, out hitDown, rayDownDist);
-		if(hitDown.transform.GetComponent<RoadPiece>() != null) {
-			roadPoint = hitDown.transform.GetComponent<RoadPiece>();
+		Debug.DrawRay(transform.position + offsetDown, -transform.up * rayDownDist, Color.blue);
+		Physics.Raycast(transform.position + offsetDown, -transform.up, out hitDown, rayDownDist);
+		if(hitDown.transform.root.GetComponent<RoadPiece>() != null) {
+			roadPoint = hitDown.transform.root.GetComponent<RoadPiece>();
+			print("TRUE: " + hitDown.transform.name);
 			return true;
 		} else {
+			print("FALSE: " + hitDown.transform.name);
 			return false;
 		}	
 	}
 
 	bool CheckWall() {
-		Debug.DrawRay(transform.position + offsetForward, Vector3.forward * rayForwardDist, Color.green);
-		Physics.Raycast(transform.position + offsetForward, Vector3.forward, out hitForward, rayForwardDist);
+		Debug.DrawRay(transform.position + offsetForward, transform.forward * rayForwardDist, Color.green);
+		Physics.Raycast(transform.position + offsetForward, transform.forward, out hitForward, rayForwardDist);
 		if(hitForward.transform) {
 			print("true: " + hitForward.transform.name + " >from: " + hitForward.transform.root.name);
 
@@ -88,15 +97,16 @@ public class CarController:MonoBehaviour {
 		carForward = transform.forward;
 		//carForward.y = transform.position.y;
 		transform.position = Vector3.MoveTowards(transform.position, transform.position + carForward, movespeedMud * Time.deltaTime);
-		//print("not on road");
+		print("~~~ not on road < < <");
 	}
 
 	void OnEnterRoad() {
 		if(!roadInfoSet) {
-			//print("road enter");
-			boxRayDetect = Physics.BoxCast(transform.position, transform.localScale, transform.forward, out boxRayHit, transform.rotation, boxRayDist);
+			print("> > road enter");
+			boxRaySize = boxRayScale * transform.localScale;
+			boxRayDetect = Physics.BoxCast(transform.position, boxRaySize, transform.forward, out boxRayHit, transform.rotation, boxRayDist);
 
-			if(boxRayDetect) {
+			if(boxRayDetect && boxRayHit.transform.name.Contains("road point")) {
 				currentPoint = roadStartPoint = roadPoint.pointsList.IndexOf(boxRayHit.transform);
 			}
 
@@ -110,6 +120,7 @@ public class CarController:MonoBehaviour {
 	}
 
 	void OnRoadMovement() {
+		print("^^ on road stay");
 		transform.position = Vector3.MoveTowards(transform.position, movePoint, movespeedRoad * Time.deltaTime);
 
 		if(Vector3.Distance(transform.position, movePoint) <= 0.1f) {
@@ -126,23 +137,25 @@ public class CarController:MonoBehaviour {
 		}
 	}
 
+	//draws the boxray
 	void OnDrawGizmos() {
 		if(drawGizmo) {
 			Gizmos.color = Color.red;
+			boxRaySize = boxRayScale * transform.localScale;
 
 			//Check if there has been a hit yet
 			if(boxRayDetect) {
 				//Draw a Ray forward from GameObject toward the hit
 				Gizmos.DrawRay(transform.position, transform.forward * boxRayHit.distance);
 				//Draw a cube that extends to where the hit exists
-				Gizmos.DrawWireCube(transform.position + transform.forward * boxRayHit.distance, transform.localScale);
+				Gizmos.DrawWireCube(transform.position + transform.forward * boxRayHit.distance, boxRaySize);
 			}
 			//If there hasn't been a hit yet, draw the ray at the maximum distance
 			else {
 				//Draw a Ray forward from GameObject toward the maximum distance
 				Gizmos.DrawRay(transform.position, transform.forward * boxRayDist);
 				//Draw a cube at the maximum distance
-				Gizmos.DrawWireCube(transform.position + transform.forward * boxRayDist, transform.localScale);
+				Gizmos.DrawWireCube(transform.position + transform.forward * boxRayDist, boxRaySize);
 			}
 		}
 	}
