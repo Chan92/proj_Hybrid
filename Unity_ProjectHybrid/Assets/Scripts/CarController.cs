@@ -9,8 +9,8 @@ public class CarController:MonoBehaviour {
 	private bool gameStart = false;
 
 	[Header("Tweakable stats")]
-	[SerializeField]
-	private float boosterSpeed;
+	[SerializeField][Range(0.5f, 10f)]
+	private float boosterSpeed = 10f;
 	[SerializeField]
 	private float movespeedMud = 5f, movespeedRoad = 10f;
 	[SerializeField]
@@ -18,7 +18,7 @@ public class CarController:MonoBehaviour {
 	[SerializeField]
 	private float rayDownDist = 0.5f, rayForwardDist = 0.2f, boxRayDist = 1.2f;
 	[SerializeField][Min(0.01f)]
-	private float boxRayScale = 1;
+	private float boxRayScale = 1f;
 
 	private Rigidbody rb;
 	private RoadPiece roadPoint;
@@ -28,6 +28,7 @@ public class CarController:MonoBehaviour {
 	private bool roadInfoSet = false;
 	private bool boxRayDetect;
 	private Vector3 boxRaySize;
+	private float curSpeed;
 
 	void Start(){
 		if(movespeedMud >= movespeedRoad) {
@@ -45,6 +46,8 @@ public class CarController:MonoBehaviour {
 		}
 
 		if(gameStart) {
+			//DebugTest();
+
 			if(CheckWall()) {
 				Vector3 _newRot = new Vector3(0, transform.eulerAngles.y + 180f, 0);
 				transform.Rotate(_newRot);
@@ -63,15 +66,34 @@ public class CarController:MonoBehaviour {
 		}
 	}
 
+	//debugging repeat track
+	//[SerializeField]
+	private Transform debugA, debugB;
+	//[SerializeField]
+	private int debugCounter;
+	void DebugTest() {
+		if (Vector3.Distance(transform.position, debugB.position) <= 1f) {
+			transform.position = debugA.position;
+			debugCounter++;
+			print("Debug Succeed: " + debugCounter);
+		}
+	}
+
 	bool OnRoadCheck() {
 		Debug.DrawRay(transform.position + offsetDown, -transform.up * rayDownDist, Color.blue);
 		Physics.Raycast(transform.position + offsetDown, -transform.up, out hitDown, rayDownDist);
 		if(hitDown.transform.root.GetComponent<RoadPiece>() != null) {
 			roadPoint = hitDown.transform.root.GetComponent<RoadPiece>();
-			print("TRUE: " + hitDown.transform.name);
+
+			if(hitDown.transform.root.GetComponent<RoadPiece>().roadType == RoadType.booster) {
+				curSpeed = boosterSpeed;
+			} else {
+				curSpeed = movespeedRoad;
+			}
+
 			return true;
 		} else {
-			print("FALSE: " + hitDown.transform.name);
+			curSpeed = movespeedMud;
 			return false;
 		}	
 	}
@@ -95,8 +117,7 @@ public class CarController:MonoBehaviour {
 	void OffRoadMovement() {
 		if(roadInfoSet)	roadInfoSet = false;
 		carForward = transform.forward;
-		//carForward.y = transform.position.y;
-		transform.position = Vector3.MoveTowards(transform.position, transform.position + carForward, movespeedMud * Time.deltaTime);
+		transform.position = Vector3.MoveTowards(transform.position, transform.position + carForward, curSpeed * Time.deltaTime);
 		print("~~~ not on road < < <");
 	}
 
@@ -110,7 +131,7 @@ public class CarController:MonoBehaviour {
 				currentPoint = roadStartPoint = roadPoint.pointsList.IndexOf(boxRayHit.transform);
 			}
 
-			//pointdebug = roadPoint.pointsList[currentPoint];
+			pointdebug = roadPoint.pointsList[currentPoint];
 			Vector3 _nextPoint = roadPoint.pointsList[currentPoint].position;
 			_nextPoint.y = transform.position.y;
 			movePoint = _nextPoint;
@@ -120,8 +141,7 @@ public class CarController:MonoBehaviour {
 	}
 
 	void OnRoadMovement() {
-		print("^^ on road stay");
-		transform.position = Vector3.MoveTowards(transform.position, movePoint, movespeedRoad * Time.deltaTime);
+		transform.position = Vector3.MoveTowards(transform.position, movePoint, curSpeed * Time.deltaTime);
 
 		if(Vector3.Distance(transform.position, movePoint) <= 0.1f) {
 			if(roadStartPoint == 0) {
